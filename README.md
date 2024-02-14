@@ -172,6 +172,10 @@ https://github.com/telcoin/telcoin-audit/pull/27
 
 @nevillehuang Yes this would potentially cause those who should have gotten rewards to have received less or non at all, and those who were not intended to get any or less than their desired amount to get more than they should have. 
 
+**sherlock-admin**
+
+The protocol team fixed this issue in PR/commit https://github.com/telcoin/telcoin-audit/pull/27.
+
 # Issue H-2: Wrong parameter when retrieving causes a complete DoS of the protocol 
 
 Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/139 
@@ -290,7 +294,8 @@ This means that the proxy target’s `withdrawMax()` function will be triggered 
 The parameter needed to perform the `withdrawMax()` call correctly is the actual Sablier lockup contract, which is currently not stored in the `CouncilMember` contract.
 
 The following diagram also summarizes the current wrong interactions for clarity:
-![vulnerability](https://github.com/sherlock-audit/2024-01-telcoin-0xadrii/assets/56537955/ec9c02a4-027e-4f8a-be12-82417bcabf59)
+![vulnerability](https://github.com/sherlock-audit/2024-01-telcoin-judging/assets/1048185/abe4d636-fdd4-4ec8-897a-6d2daf737d95)
+
 
 ## Impact
 
@@ -652,50 +657,11 @@ It is recommended to avoid popping out balances to keep alignment with uniquely 
 
 See comments [here](https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/32) for duplication reasons.
 
-# Issue M-1: TelcoinDistributor.sol 
-
-Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/24 
-
-## Found by 
-0xadrii, Tricko, fnanni, grearlake, p-tsanev, zzykxx
-## Summary
-The TelcoinDistributor contract allows for the proposal, execution and challenging(cancellation) of transactions. It also introduces pausing functionality, probably to deal with external integration pausing and as a security measure. This functionality can give unfair advantage to proposers.
-
-## Vulnerability Detail
-The functions for executing and creating proposals are correctly safe-guarded with the ``whenNotPaused`` modifier, stopping the creation and execution of proposals. But an unfair advantage is created because the ``challengeTransaction`` function has the ``whenNotPaused`` modifier as well.
-Depending the the duration of the pause it is highly possible for proposals created before the pause, either intentionally via front-running or accidentally, to pass their challenge period, giving council members no way to challenge. Thus creating an unfair advantage during the pause and potentially allowing malicious/unfavorable transactions to reach execution. 
-
-## Impact
-Unfair advantage during pause, potential stealing of funds from the ``owner()`` due to inability to challenge proposal
-
-## Code Snippet
-https://github.com/sherlock-audit/2024-01-telcoin/blob/main/telcoin-audit/contracts/protocol/core/TelcoinDistributor.sol#L115-L136
-
-## Tool used
-
-Manual Review
-
-## Recommendation
-Remove the ``whenNotPaused`` modifier from the ``challengeTransaction`` function.
-
-
-
-## Discussion
-
 **amshirif**
 
-https://github.com/telcoin/telcoin-audit/pull/29
+https://github.com/telcoin/telcoin-audit/pull/31
 
-**sherlock-admin2**
-
-1 comment(s) were left on this issue during the judging contest.
-
-**takarez** commented:
->  invalid because { This is invalid due to the fact that sherlokc's rule number 5 stated that "Pausing a collateral causes some users to be unfairly liquidated or any other action causing loss of funds. This is not considered a valid issue."}
-
-
-
-# Issue M-2: The `CouncilMember` contract DoS due to the `_retrieve` function revert 
+# Issue M-1: The `CouncilMember` contract DoS due to the `_retrieve` function revert 
 
 Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/47 
 
@@ -773,117 +739,94 @@ https://github.com/telcoin/telcoin-audit/pull/37
 
 @nevillehuang Yes I agree
 
-# Issue M-3: Lack of check if proxy executed was successful leading to inaccurate update of rewards 
+**0xf1b0**
 
-Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/84 
+Escalate
 
-## Found by 
-eeshenggoh
-## Summary
-`CouncilMember::_retrieve()` is used to retrieve and distribute TELCOIN to council members based on the stream from` _target`. It uses a Sabiler PRBproxy to withdraw tokens to the `CouncilMembers` contract. The problem lies in not checking whether the transaction is successful.
+I disagree with the severity. It shares the same impact as #139, as both are results of the `_retrieve` function reverting. However, the root cause of the revert is different.
 
-## Vulnerability Detail
-The `CouncileMember.sol::retrieve()` calls the `IPRBProxy.sol::execute()` which performs a delegate call to withdraw tokens. In the [IPRBProxy.sol from Etherscan](https://etherscan.io/address/0x638a7aC8315767cEAfc57a6f5e3559454347C3f6#code#F7#L53) execute function's Natspec states that `It returns the data it gets back, and bubbles up any potential revert`. This means that, if the target contract's function being called through execute encounters a revert, that revert is not caught or handled within the execute function itself. Instead, it is allowed to propagate back to the caller of the execute function, and the caller can decide how to handle or react to the revert. 
+This issue also affects the withdrawal, as the withdrawal process itself includes the `_retrieve` function call. The Vulnerability Detail section provides scenarios 1 and 3, which illustrate how withdrawals can potentially be halted.
 
-## Impact
-The retrieval and distribution of TELCOIN will be inaccurate hence, causing users to lose their TELCOIN rewards.
-## Code Snippet
-https://github.com/sherlock-audit/2024-01-telcoin/blob/main/telcoin-audit/contracts/sablier/core/CouncilMember.sol#L270-L279
-## Tool used
+**sherlock-admin**
 
-Manual Review
+> Escalate
+> 
+> I disagree with the severity. It shares the same impact as #139, as both are results of the `_retrieve` function reverting. However, the root cause of the revert is different.
+> 
+> This issue also affects the withdrawal, as the withdrawal process itself includes the `_retrieve` function call. The Vulnerability Detail section provides scenarios 1 and 3, which illustrate how withdrawals can potentially be halted.
 
-## Recommendation
-1) Handle the `(bytes memory response)` received 
-```solidity
-bytes memory response = _stream.execute(
-    _target,
-    abi.encodeWithSelector(
-        ISablierV2ProxyTarget.withdrawMax.selector,
-        _target,
-        _id,
-        address(this)
-    )
-);
-// Custom Error helps saves gas
-error ExecuteFail();
+You've created a valid escalation!
 
-// Check if the response indicates a revert
-if (response.length > 0) {
-    // Handle revert
-    // You may parse the response to get the revert reason
-    // Note: The exact method depends on the implementation of your contracts
-    revert ExecuteFail();
-}
+To remove the escalation from consideration: Delete your comment.
 
-```
+You may delete or edit your escalation comment anytime before the 48-hour escalation window closes. After that, the escalation becomes final.
 
+**nevillehuang**
 
+@0xf1b0 Can you provide a coded PoC so that I can analyze the differences in root cause? I think this might be a duplicate of #139 
 
-## Discussion
+**0xArz**
+
+@nevillehuang The root cause in https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/139 is that when calling `_retrieve()` it will always revert because we are calling a wrong address.
+
+The root cause here is that `_retrieve()` reverts when withdrawing 0 amounts, in some functions like mint() it is called 2 times - first called in the function and then its called the second time in ERC721.update() which will fail the second time because we already withdrew the max. Or for example a stream is used where the withdrawable amount is 0 for some time - unlocking in steps etc.
+
+The impact of this issue is that we call only mint 1 CouncilMember nft because the first time mint() is called,  `_retrieve()` is called only once, after that all calls to mint(),burn() and removeFromOffice() will revert because  `_retrieve()` is called 2 times. 
+
+The 1 council member can still claim the rewards but if a dynamic stream is used and the council member calls the public `retrieve()` he can then fail to claim his rewards for some time until more rewards are unlocked. Although because we will only have 1 council member this will lead to unfair distribution of the rewards
 
 **amshirif**
 
-https://github.com/telcoin/telcoin-audit/pull/37
+This is not a duplicate of #139, and it does not share the same impact. #139 is more serious as it essentially prevents the withdrawal ability from ever working. 
+
+**nevillehuang**
+
+Agree with sponsor @amshirif, unless @0xArz @0xf1b0 can show a PoC  of the issue showing an impact that prevents withdrawals/affects rewards claiming.
+
+**0xArz**
+
+> Agree with sponsor @amshirif, unless @0xArz @0xf1b0 can show a PoC of the issue showing an impact that prevents withdrawals/affects rewards claiming.
+
+I agree, funds can be stuck but the DoS is only temporarily. However if we only have 1 council member then 100% of the funds are distributed to him which imo is quite a big problem as council members are semitrusted and other members that were supposed to receive funds will not receive anything but its up to you to decide whether this defines high severity or no. 
+
+**nevillehuang**
+
+@0xArz I am abit confused by your statement. How can there be other council members that were supposed to receive funds when there is only 1 council member decided by the governance?
+
+**0xArz**
+
+@nevillehuang Yeah there will only be 1 council member but for example lets say the governance wanted to have 3 council members, they will fail to set the other members after the first one because the retrieve reverts. So instead of having 3 council members there will only be 1 and he will receive 100% of the funds while the other members that were supposed to be set will not receive anything because they were not set
+
+**0xf1b0**
+
+> Agree with sponsor @amshirif, unless @0xArz @0xf1b0 can show a PoC of the issue showing an impact that prevents withdrawals/affects rewards claiming.
+
+Doesn't case 3 from the Vulnerability Detail, where malicious actor can front-run every transaction with `retrieve` call, show this impact? No one will be able to withdraw funds.
+
+**nevillehuang**
+
+@0xArz Acknowledge this possibility given `mint()` and `burn()` can possibly be bricked too. However, since the first council member still get their intended rewards, admins can then choose to not topup rewards thereafter. So I believe this is just a DoS scenario.
+
+**Evert0x**
+
+Planning to reject escalation and keep issue state as is.
+
+The provided context and discussion fail to make the case for high severity as the impact is limited to specific actors and scenarios. 
+
+**Evert0x**
+
+Result:
+Medium
+Has Duplicates
 
 **sherlock-admin2**
 
-1 comment(s) were left on this issue during the judging contest.
+Escalations have been resolved successfully!
 
-**takarez** commented:
->  invalid because { This is invalid because the "buble up" here means to reshurfle and return a revert with the returned data; [read](https://github.com/PaulRBerg/prb-proxy/blob/fa13cf09fbf544a2d575b45884b8e94a79a02c06/src/PRBProxy.sol#L123C7-L134C10)}
+Escalation status:
+- [0xf1b0](https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/47/#issuecomment-1918575132): rejected
 
-
-
-**goheesheng**
-
-> 1 comment(s) were left on this issue during the judging contest.
-> 
-> **takarez** commented:
-> 
-> > invalid because { This is invalid because the "buble up" here means to reshurfle and return a revert with the returned data; [read](https://github.com/PaulRBerg/prb-proxy/blob/fa13cf09fbf544a2d575b45884b8e94a79a02c06/src/PRBProxy.sol#L123C7-L134C10)}
-
-The vulnerability here is that it isn't handled with the reverted data at all. This means that since it isn't handled the data price will always be staled. Since, it always gets reverted without exception, the protocol final balance will remain the same, causing each player to not get the deducted rewards distribution.  Hence protocol loses lots of funds because it is permanently staled data and will never updated. Therefore it is clear it is a high vuln.
-
-**nevillehuang**
-
-@goheesheng @amshirif In what scenarios will a revert be triggered? I will have to look more into the out of scope proxy contract mentioned here to ensure this did not arise because of user input error.
-
-**nevillehuang**
-
-request poc
-
-**sherlock-admin2**
-
-PoC requested from @goheesheng
-
-Requests remaining: **6**
-
-**goheesheng**
-
-1) _retrieve internal functions is called.
-2) Withdrawal not executed and protocol funds are not withdraws to the contract.
-3) When user calls claim, the funds rewards are not even distributed from the protocol rewards earned assuming that the Sabliers has any rewards yielded.
-4) Since final balance == running balance which means that is rewards that cannot be distributed.
-5) Users doesn't get any rewards at all.
-
-Have confirmed with developer from Sablier team Andreivladbrg. 
-
-**nevillehuang**
-
-@goheesheng Can you share the discussion between you and sablier?
-
-**amshirif**
-
-@nevillehuang the above by @goheesheng is correct
-
-**goheesheng**
-
-> @goheesheng Can you share the discussion between you and sablier?
-
-"The transaction would fail"
-
-# Issue M-4: Sablier stream update in `CouncilMember.sol` can cause loss of funds if the streamed balance is not withdrawn. 
+# Issue M-2: Sablier stream update in `CouncilMember.sol` can cause loss of funds if the streamed balance is not withdrawn. 
 
 Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/99 
 
@@ -915,7 +858,8 @@ However, the previously streamed balance can be reclaimed by adding the old stre
 >And last one is, Governance council will be a contract or EOA ( can be multisig). If governance council will be multisig, then how often can it make updates to the contracts?
 
 **_Answer from Sponsor:_**
-![image](https://github.com/sherlock-audit/2024-01-telcoin-Aamirusmani1552/assets/90125875/8e438f94-94fa-4fbd-82d9-39796647ae7c)
+![image](https://github.com/sherlock-audit/2024-01-telcoin-judging/assets/1048185/bf5bbaee-66ee-408d-abcd-87819a665355)
+
 
 So if this is the case then new update will be done after some time and a lot of things might happen in that time.
 
