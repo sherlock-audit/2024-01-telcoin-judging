@@ -176,6 +176,10 @@ https://github.com/telcoin/telcoin-audit/pull/27
 
 The protocol team fixed this issue in PR/commit https://github.com/telcoin/telcoin-audit/pull/27.
 
+**sherlock-admin**
+
+The Lead Senior Watson signed-off on the fix.
+
 # Issue H-2: Wrong parameter when retrieving causes a complete DoS of the protocol 
 
 Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/139 
@@ -521,6 +525,14 @@ https://github.com/telcoin/telcoin-audit/pull/43
 
 @nevillehuang No, a new contract with these fixes would need to be deployed to prevent DoS because those two values had to be the same prior to the fix.
 
+**sherlock-admin**
+
+The protocol team fixed this issue in PR/commit https://github.com/telcoin/telcoin-audit/pull/43.
+
+**sherlock-admin**
+
+The Lead Senior Watson signed-off on the fix.
+
 # Issue H-3: CouncilMember:burn renders the contract inoperable after the first execution 
 
 Source: https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/199 
@@ -660,6 +672,14 @@ See comments [here](https://github.com/sherlock-audit/2024-01-telcoin-judging/is
 **amshirif**
 
 https://github.com/telcoin/telcoin-audit/pull/31
+
+**sherlock-admin**
+
+The protocol team fixed this issue in PR/commit https://github.com/telcoin/telcoin-audit/pull/31.
+
+**sherlock-admin**
+
+The Lead Senior Watson signed off on the fix.
 
 # Issue M-1: The `CouncilMember` contract DoS due to the `_retrieve` function revert 
 
@@ -825,6 +845,14 @@ Escalations have been resolved successfully!
 
 Escalation status:
 - [0xf1b0](https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/47/#issuecomment-1918575132): rejected
+
+**sherlock-admin**
+
+The protocol team fixed this issue in PR/commit https://github.com/telcoin/telcoin-audit/pull/37.
+
+**sherlock-admin**
+
+The Lead Senior Watson signed off on the fix.
 
 # Issue M-2: Sablier stream update in `CouncilMember.sol` can cause loss of funds if the streamed balance is not withdrawn. 
 
@@ -1001,4 +1029,12 @@ https://github.com/sherlock-audit/2024-01-telcoin-judging/issues/112
 **amshirif**
 
 https://github.com/telcoin/telcoin-audit/pull/49
+
+**sherlock-admin**
+
+The protocol team fixed this issue in PR/commit https://github.com/telcoin/telcoin-audit/pull/49.
+
+**sherlock-admin**
+
+The Lead Senior Watson signed-off on the fix.
 
